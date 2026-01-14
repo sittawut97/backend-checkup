@@ -17,6 +17,11 @@ func CORSMiddleware(cfg *Config) gin.HandlerFunc {
 			}
 		}
 
+		// Allow all Vercel preview URLs (*.vercel.app)
+		if !allowed && len(origin) > 11 && origin[len(origin)-11:] == ".vercel.app" {
+			allowed = true
+		}
+
 		if allowed {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		}
