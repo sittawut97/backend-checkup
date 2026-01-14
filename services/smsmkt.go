@@ -8,16 +8,15 @@ import (
 )
 
 type SMSMKTClient struct {
-	APIKey string
-	Sender string
-	URL    string
+	APIKey    string
+	SecretKey string
+	URL       string
 }
 
 func (s *SMSMKTClient) SendSMS(phone string, message string) error {
 	payload := map[string]interface{}{
-		"sender": s.Sender,
-		"to":     phone,
-		"message": message,
+		"project_key": s.APIKey,
+		"phone":       phone,
 	}
 
 	body, _ := json.Marshal(payload)
@@ -28,7 +27,8 @@ func (s *SMSMKTClient) SendSMS(phone string, message string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apiKey", s.APIKey)
+	req.Header.Set("api_key", s.APIKey)
+	req.Header.Set("secret_key", s.SecretKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

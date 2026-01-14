@@ -25,9 +25,9 @@ func main() {
 
 	// Initialize SMS client
 	smsClient := &services.SMSMKTClient{
-		APIKey: cfg.SMSMKTKey,
-		Sender: cfg.SMSMKTSender,
-		URL:    cfg.SMSMKTURL,
+		APIKey:    cfg.SMSMKTKey,
+		SecretKey: cfg.SMSMKTSecretKey,
+		URL:       cfg.SMSMKTURL,
 	}
 
 	// Set Gin mode
