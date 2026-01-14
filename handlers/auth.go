@@ -102,11 +102,11 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 
 	expiresAt := time.Now().Add(5 * time.Minute)
 
-	// Save token to database
+	// Save token to database (use id field to store token)
 	otpData := map[string]interface{}{
-		"id":         uuid.New().String(),
+		"id":         token,
 		"phone":      req.Phone,
-		"otp_code":   token,
+		"otp_code":   "000000",
 		"expires_at": expiresAt,
 		"is_used":    false,
 		"attempts":   0,
@@ -176,8 +176,9 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	otp := otps[len(otps)-1] // Get the latest OTP (token)
-	fmt.Printf("Found token: %s, Expires: %v, IsUsed: %v, Attempts: %d\n", otp.OTPCode, otp.ExpiresAt, otp.IsUsed, otp.Attempts)
+	otp := otps[len(otps)-1] // Get the latest OTP (token in id field)
+	token := otp.ID
+	fmt.Printf("Found token: %s, Expires: %v, IsUsed: %v, Attempts: %d\n", token, otp.ExpiresAt, otp.IsUsed, otp.Attempts)
 
 	// Check if OTP is expired
 	if time.Now().After(otp.ExpiresAt) {
@@ -198,7 +199,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	}
 
 	// Validate OTP with SMSMKT
-	if err := h.sms.ValidateOTP(otp.OTPCode, req.OTPCode, "CHECKUP"); err != nil {
+	if err := h.sms.ValidateOTP(token, req.OTPCode, "CHECKUP"); err != nil {
 		fmt.Printf("SMSMKT validation error: %v\n", err)
 		
 		// Increment attempts
