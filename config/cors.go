@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +19,7 @@ func CORSMiddleware(cfg *Config) gin.HandlerFunc {
 		}
 
 		// Allow all Vercel preview URLs (*.vercel.app)
-		if !allowed && len(origin) > 11 && origin[len(origin)-11:] == ".vercel.app" {
+		if !allowed && strings.HasSuffix(origin, ".vercel.app") {
 			allowed = true
 		}
 
