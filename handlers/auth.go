@@ -450,6 +450,6 @@ func (h *AuthHandler) generateToken(user models.User) (string, error) {
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token = jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(h.config.JWTSecret))
 }
