@@ -247,8 +247,8 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 
 	user := users[0]
 
-	// Generate JWT token
-	token, err := h.generateToken(user)
+	// ✅ แก้ไข - ใช้ชื่อตัวแปรใหม่
+	jwtToken, err := h.generateToken(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
@@ -261,10 +261,11 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		Success: true,
 		Message: "Login successful",
 		Data: models.LoginResponse{
-			Token: token,
+			Token: jwtToken,  // ← เปลี่ยนเป็น jwtToken
 			User:  user,
 		},
 	})
+
 }
 
 // generateOTP creates a random 6-digit OTP
@@ -450,6 +451,6 @@ func (h *AuthHandler) generateToken(user models.User) (string, error) {
 		},
 	}
 
-	token = jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(h.config.JWTSecret))
 }
