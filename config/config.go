@@ -13,6 +13,10 @@ type Config struct {
 	Port                string
 	Environment         string
 	AllowedOrigins      []string
+	JWTSecret           string
+	SMSMKTKey           string
+	SMSMKTSender        string
+	SMSMKTURL           string
 }
 
 func NewConfig() *Config {
@@ -30,6 +34,10 @@ func NewConfig() *Config {
 		Port:               getEnvOrDefault("PORT", "8080"),
 		Environment:        getEnvOrDefault("ENVIRONMENT", "development"),
 		AllowedOrigins:     allowedOrigins,
+		JWTSecret:          os.Getenv("JWT_SECRET"),
+		SMSMKTKey:          os.Getenv("SMSMKT_API_KEY"),
+		SMSMKTSender:       os.Getenv("SMSMKT_SENDER"),
+		SMSMKTURL:          os.Getenv("SMSMKT_URL"),
 	}
 }
 

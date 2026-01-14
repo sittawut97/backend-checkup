@@ -6,11 +6,12 @@ import (
 	"github.com/sittawut/backend-appointment/config"
 	"github.com/sittawut/backend-appointment/handlers"
 	"github.com/sittawut/backend-appointment/middleware"
+	"github.com/sittawut/backend-appointment/services"
 )
 
-func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Config) {
+func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Config, smsClient *services.SMSMKTClient) {
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(supabaseClient, cfg)
+	authHandler := handlers.NewAuthHandler(supabaseClient, cfg, smsClient)
 	bookingHandler := handlers.NewBookingHandler(supabaseClient, cfg)
 	doctorHandler := handlers.NewDoctorHandler(supabaseClient, cfg)
 	nurseHandler := handlers.NewNurseHandler(supabaseClient, cfg)

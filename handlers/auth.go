@@ -18,17 +18,20 @@ import (
 	"github.com/sittawut/backend-appointment/config"
 	"github.com/sittawut/backend-appointment/middleware"
 	"github.com/sittawut/backend-appointment/models"
+	"github.com/sittawut/backend-appointment/services"
 )
 
 type AuthHandler struct {
 	supabase *supa.Client
 	config   *config.Config
+	sms      *services.SMSMKTClient
 }
 
-func NewAuthHandler(supabase *supa.Client, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(supabase *supa.Client, cfg *config.Config, smsClient *services.SMSMKTClient) *AuthHandler {
 	return &AuthHandler{
 		supabase: supabase,
 		config:   cfg,
+		sms:      smsClient,
 	}
 }
 
@@ -110,9 +113,19 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		return
 	}
 
-	// TODO: Send OTP via SMS (integrate with SMS provider)
-	// For now, we'll just log it (REMOVE IN PRODUCTION!)
-	fmt.Printf("OTP for %s: %s\n", req.Phone, otpCode)
+	// // TODO: Send OTP via SMS (integrate with SMS provider)
+	// // For now, we'll just log it (REMOVE IN PRODUCTION!)
+	// fmt.Printf("OTP for %s: %s\n", req.Phone, otpCode)
+
+	// แทนที่บรรทัด 116-118 ใน auth.go
+	// Send OTP via SMS
+	message := fmt.Sprintf("Your OTP code is: %s (valid for 1 minute)", otpCode)
+	if err := h.sms.SendSMS(req.Phone, message); err != nil {
+		fmt.Printf("Failed to send SMS: %v\n", err)
+		// ยังคง return success เพราะ OTP ถูกสร้างแล้ว
+	}
+	fmt.Printf("OTP sent to %s: %s\n", req.Phone, otpCode)
+	
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,

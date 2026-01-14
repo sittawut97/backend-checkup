@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sittawut/backend-appointment/config"
 	"github.com/sittawut/backend-appointment/routes"
+	"github.com/sittawut/backend-appointment/services"
 )
 
 func main() {
@@ -22,6 +23,13 @@ func main() {
 	// Initialize Supabase client
 	supabaseClient := config.NewSupabaseClient(cfg)
 
+	// Initialize SMS client
+	smsClient := &services.SMSMKTClient{
+		APIKey: cfg.SMSMKTKey,
+		Sender: cfg.SMSMKTSender,
+		URL:    cfg.SMSMKTURL,
+	}
+
 	// Set Gin mode
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -34,7 +42,7 @@ func main() {
 	router.Use(config.CORSMiddleware(cfg))
 
 	// Setup routes
-	routes.SetupRoutes(router, supabaseClient, cfg)
+	routes.SetupRoutes(router, supabaseClient, cfg, smsClient)
 
 	// Start server
 	port := os.Getenv("PORT")
