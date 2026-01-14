@@ -8,15 +8,17 @@ import (
 )
 
 type SMSMKTClient struct {
-	APIKey    string
-	SecretKey string
-	URL       string
+	APIKey     string
+	SecretKey  string
+	ProjectKey string
+	URL        string
 }
 
 func (s *SMSMKTClient) SendSMS(phone string, message string) error {
 	payload := map[string]interface{}{
-		"project_key": s.APIKey,
+		"project_key": s.ProjectKey,
 		"phone":       phone,
+		"ref_code":    "CHECKUP",
 	}
 
 	body, _ := json.Marshal(payload)

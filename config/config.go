@@ -15,6 +15,7 @@ type Config struct {
 	AllowedOrigins      []string
 	SMSMKTKey           string
 	SMSMKTSecretKey     string
+	SMSMKTProjectKey    string
 	SMSMKTURL           string
 }
 
@@ -35,6 +36,7 @@ func NewConfig() *Config {
 		AllowedOrigins:     allowedOrigins,
 		SMSMKTKey:          os.Getenv("SMSMKT_API_KEY"),
 		SMSMKTSecretKey:    os.Getenv("SMSMKT_SECRET_KEY"),
+		SMSMKTProjectKey:   os.Getenv("SMSMKT_PROJECT_KEY"),
 		SMSMKTURL:          os.Getenv("SMSMKT_URL"),
 	}
 }
