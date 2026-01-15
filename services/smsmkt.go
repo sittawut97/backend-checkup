@@ -78,10 +78,12 @@ func (s *SMSMKTClient) ValidateOTP(token, otpCode, refCode string) error {
 	}
 
 	body, _ := json.Marshal(payload)
+	fmt.Printf("[SMSMKT] ValidateOTP Request - Token: %s, OTP: %s, RefCode: %s\n", token, otpCode, refCode)
 
 	validateURL := "https://portal-otp.smsmkt.com/api/otp-validate"
 	req, err := http.NewRequest("POST", validateURL, bytes.NewBuffer(body))
 	if err != nil {
+		fmt.Printf("[SMSMKT] Request creation error: %v\n", err)
 		return err
 	}
 
@@ -92,9 +94,12 @@ func (s *SMSMKTClient) ValidateOTP(token, otpCode, refCode string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Printf("[SMSMKT] HTTP request error: %v\n", err)
 		return err
 	}
 	defer resp.Body.Close()
+
+	fmt.Printf("[SMSMKT] Response Status: %d\n", resp.StatusCode)
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("SMSMKT validation failed with status %d", resp.StatusCode)
@@ -102,13 +107,19 @@ func (s *SMSMKTClient) ValidateOTP(token, otpCode, refCode string) error {
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Printf("[SMSMKT] Body read error: %v\n", err)
 		return err
 	}
 
+	fmt.Printf("[SMSMKT] Response Body: %s\n", string(respBody))
+
 	var smsmktResp SMSMKTResponse
 	if err := json.Unmarshal(respBody, &smsmktResp); err != nil {
+		fmt.Printf("[SMSMKT] JSON unmarshal error: %v\n", err)
 		return err
 	}
+
+	fmt.Printf("[SMSMKT] Parsed Response - Code: %s, Detail: %s\n", smsmktResp.Code, smsmktResp.Detail)
 
 	if smsmktResp.Code != "000" {
 		return fmt.Errorf("invalid OTP: %s", smsmktResp.Detail)
