@@ -129,6 +129,11 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 		return
 	}
 
+	// Default customer_id to authenticated user if not provided
+	if req.CustomerID == "" {
+		req.CustomerID = userID.(string)
+	}
+
 	// Verify customer_id matches authenticated user (unless nurse/admin)
 	role, _ := c.Get("role")
 	if role.(string) == "customer" && req.CustomerID != userID.(string) {
