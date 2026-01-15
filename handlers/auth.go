@@ -13,12 +13,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	supa "github.com/supabase-community/supabase-go"
-	"github.com/supabase-community/postgrest-go"
 	"github.com/sittawut/backend-appointment/config"
 	"github.com/sittawut/backend-appointment/middleware"
 	"github.com/sittawut/backend-appointment/models"
 	"github.com/sittawut/backend-appointment/services"
+	"github.com/supabase-community/postgrest-go"
+	supa "github.com/supabase-community/supabase-go"
 )
 
 type AuthHandler struct {
@@ -40,10 +40,10 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	// Log raw body for debugging
 	bodyBytes, _ := c.GetRawData()
 	fmt.Printf("Raw request body: %s\n", string(bodyBytes))
-	
+
 	// Reset body for binding
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	
+
 	var req models.RequestOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fmt.Printf("Request OTP binding error: %v\n", err)
@@ -53,7 +53,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	fmt.Printf("Request OTP for phone: %s\n", req.Phone)
 
 	// Check if user exists
@@ -84,7 +84,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	h.supabase.From("otp_codes").
 		Update(map[string]interface{}{"is_used": true}, "", "").
 		Eq("phone", req.Phone).
-		Eq("is_used", "false").
+		Eq("is_used", false).
 		Execute()
 
 	// Send OTP via SMSMKT
@@ -123,7 +123,6 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		})
 		return
 	}
-	
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
@@ -146,7 +145,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	fmt.Printf("Verify OTP - Phone: %s, OTP: %s\n", req.Phone, req.OTPCode)
 
 	// Get latest unused OTP for this phone
@@ -154,7 +153,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	data, _, err := h.supabase.From("otp_codes").
 		Select("*", "", false).
 		Eq("phone", req.Phone).
-		Eq("is_used", "false").
+		Eq("is_used", false).
 		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
 		Execute()
 
@@ -176,12 +175,19 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	otp := otps[len(otps)-1] // Get the latest OTP (token in id field)
+	// We ordered by created_at DESC, so the latest record is the first element.
+	otp := otps[0]
 	token := otp.ID
 	fmt.Printf("Found token: %s, Expires: %v, IsUsed: %v, Attempts: %d\n", token, otp.ExpiresAt, otp.IsUsed, otp.Attempts)
 
 	// Check if OTP is expired
 	if time.Now().After(otp.ExpiresAt) {
+		// Mark OTP as used so it cannot be reused.
+		h.supabase.From("otp_codes").
+			Update(map[string]interface{}{"is_used": true}, "", "").
+			Eq("id", otp.ID).
+			Execute()
+
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Success: false,
 			Error:   "OTP has expired",
@@ -191,6 +197,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 
 	// Check attempts
 	if otp.Attempts >= 3 {
+		// Mark OTP as used so it cannot be reused.
+		h.supabase.From("otp_codes").
+			Update(map[string]interface{}{"is_used": true}, "", "").
+			Eq("id", otp.ID).
+			Execute()
+
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Success: false,
 			Error:   "Too many attempts. Please request a new OTP",
@@ -201,7 +213,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// Validate OTP with SMSMKT
 	if err := h.sms.ValidateOTP(token, req.OTPCode, "CHECKUP"); err != nil {
 		fmt.Printf("SMSMKT validation error: %v\n", err)
-		
+
 		// Increment attempts
 		updateData := map[string]interface{}{
 			"attempts": otp.Attempts + 1,
@@ -217,7 +229,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	fmt.Printf("OTP validated successfully for phone: %s\n", req.Phone)
 
 	// Mark OTP as used
@@ -261,7 +273,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		Success: true,
 		Message: "Login successful",
 		Data: models.LoginResponse{
-			Token: jwtToken,  // ← เปลี่ยนเป็น jwtToken
+			Token: jwtToken, // ← เปลี่ยนเป็น jwtToken
 			User:  user,
 		},
 	})
@@ -305,18 +317,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	// Create new user
 	newUser := map[string]interface{}{
-		"id":         uuid.New().String(),
-		"phone":      req.Phone,
-		"full_name":  req.FullName,
-		"birth_date":    req.BirthDate,
-		"gender":        req.Gender,
-		"email":         req.Email,
-		"address":       req.Address,
-		"blood_type":    req.BloodType,
-		"age":           req.Age,
-		"company_name":  req.CompanyName,
-		"role":          "customer",
-		"is_active":     true,
+		"id":           uuid.New().String(),
+		"phone":        req.Phone,
+		"full_name":    req.FullName,
+		"birth_date":   req.BirthDate,
+		"gender":       req.Gender,
+		"email":        req.Email,
+		"address":      req.Address,
+		"blood_type":   req.BloodType,
+		"age":          req.Age,
+		"company_name": req.CompanyName,
+		"role":         "customer",
+		"is_active":    true,
 	}
 
 	var createdUsers []models.User
