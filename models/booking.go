@@ -17,9 +17,9 @@ type Booking struct {
 
 type BookingWithDetails struct {
 	Booking
-	CustomerName string        `json:"customer_name"`
-	CustomerPhone string       `json:"customer_phone"`
-	Appointments []Appointment `json:"appointments"`
+	CustomerName  string                   `json:"customer_name"`
+	CustomerPhone string                   `json:"customer_phone"`
+	Appointments  []AppointmentWithDetails `json:"appointments"`
 }
 
 type CreateBookingRequest struct {

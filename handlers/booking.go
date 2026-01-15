@@ -49,9 +49,56 @@ func (h *BookingHandler) GetMyBookings(c *gin.Context) {
 		return
 	}
 
+	var bookingDetails []models.BookingWithDetails
+	for _, b := range bookings {
+		var appointments []models.Appointment
+		aptData, _, aptErr := h.supabase.From("appointments").
+			Select("*", "", false).
+			Eq("booking_id", b.ID).
+			Execute()
+		if aptErr == nil {
+			json.Unmarshal(aptData, &appointments)
+		}
+
+		var appointmentDetails []models.AppointmentWithDetails
+		for _, apt := range appointments {
+			var doctors []models.Doctor
+			doctorData, _, _ := h.supabase.From("doctors").
+				Select("id, full_name, title", "", false).
+				Eq("id", apt.DoctorID).
+				Execute()
+			json.Unmarshal(doctorData, &doctors)
+
+			var slots []models.TimeSlot
+			slotData, _, _ := h.supabase.From("time_slots").
+				Select("id, start_time, end_time", "", false).
+				Eq("id", apt.TimeSlotID).
+				Execute()
+			json.Unmarshal(slotData, &slots)
+
+			aptWithDetails := models.AppointmentWithDetails{Appointment: apt}
+			if len(doctors) > 0 {
+				aptWithDetails.DoctorName = doctors[0].FullName
+				if doctors[0].Title != nil {
+					aptWithDetails.DoctorTitle = *doctors[0].Title
+				}
+			}
+			if len(slots) > 0 {
+				aptWithDetails.StartTime = slots[0].StartTime
+				aptWithDetails.EndTime = slots[0].EndTime
+			}
+			appointmentDetails = append(appointmentDetails, aptWithDetails)
+		}
+
+		bookingDetails = append(bookingDetails, models.BookingWithDetails{
+			Booking:      b,
+			Appointments: appointmentDetails,
+		})
+	}
+
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
-		Data:    bookings,
+		Data:    bookingDetails,
 	})
 }
 
@@ -93,6 +140,36 @@ func (h *BookingHandler) GetBookingByID(c *gin.Context) {
 		json.Unmarshal(data2, &appointments)
 	}
 
+	var appointmentDetails []models.AppointmentWithDetails
+	for _, apt := range appointments {
+		var doctors []models.Doctor
+		doctorData, _, _ := h.supabase.From("doctors").
+			Select("id, full_name, title", "", false).
+			Eq("id", apt.DoctorID).
+			Execute()
+		json.Unmarshal(doctorData, &doctors)
+
+		var slots []models.TimeSlot
+		slotData, _, _ := h.supabase.From("time_slots").
+			Select("id, start_time, end_time", "", false).
+			Eq("id", apt.TimeSlotID).
+			Execute()
+		json.Unmarshal(slotData, &slots)
+
+		aptWithDetails := models.AppointmentWithDetails{Appointment: apt}
+		if len(doctors) > 0 {
+			aptWithDetails.DoctorName = doctors[0].FullName
+			if doctors[0].Title != nil {
+				aptWithDetails.DoctorTitle = *doctors[0].Title
+			}
+		}
+		if len(slots) > 0 {
+			aptWithDetails.StartTime = slots[0].StartTime
+			aptWithDetails.EndTime = slots[0].EndTime
+		}
+		appointmentDetails = append(appointmentDetails, aptWithDetails)
+	}
+
 	// Get customer info
 	var users []models.User
 	data3, _, _ := h.supabase.From("users").
@@ -103,7 +180,7 @@ func (h *BookingHandler) GetBookingByID(c *gin.Context) {
 
 	bookingWithDetails := models.BookingWithDetails{
 		Booking:      bookings[0],
-		Appointments: appointments,
+		Appointments: appointmentDetails,
 	}
 
 	if len(users) > 0 {
