@@ -84,7 +84,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	h.supabase.From("otp_codes").
 		Update(map[string]interface{}{"is_used": true}, "", "").
 		Eq("phone", req.Phone).
-		Eq("is_used", false).
+		Eq("is_used", "false").
 		Execute()
 
 	// Send OTP via SMSMKT
@@ -153,7 +153,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	data, _, err := h.supabase.From("otp_codes").
 		Select("*", "", false).
 		Eq("phone", req.Phone).
-		Eq("is_used", false).
+		Eq("is_used", "false").
 		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
 		Execute()
 
