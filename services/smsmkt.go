@@ -21,6 +21,7 @@ type SMSMKTResponse struct {
 	Result struct {
 		Token   string `json:"token"`
 		RefCode string `json:"ref_code"`
+		Status  bool   `json:"status"`
 	} `json:"result"`
 }
 
@@ -119,10 +120,15 @@ func (s *SMSMKTClient) ValidateOTP(token, otpCode, refCode string) error {
 		return err
 	}
 
-	fmt.Printf("[SMSMKT] Parsed Response - Code: %s, Detail: %s\n", smsmktResp.Code, smsmktResp.Detail)
+	fmt.Printf("[SMSMKT] Parsed Response - Code: %s, Detail: %s, Status: %v\n", smsmktResp.Code, smsmktResp.Detail, smsmktResp.Result.Status)
 
 	if smsmktResp.Code != "000" {
 		return fmt.Errorf("invalid OTP: %s", smsmktResp.Detail)
+	}
+
+	// Check result.status for actual validation result
+	if !smsmktResp.Result.Status {
+		return fmt.Errorf("invalid OTP code")
 	}
 
 	return nil
