@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	supa "github.com/supabase-community/supabase-go"
 	"github.com/sittawut/backend-appointment/config"
 	"github.com/sittawut/backend-appointment/models"
+	supa "github.com/supabase-community/supabase-go"
 )
 
 type BookingHandler struct {
@@ -92,7 +92,6 @@ func (h *BookingHandler) GetBookingByID(c *gin.Context) {
 	if err2 == nil {
 		json.Unmarshal(data2, &appointments)
 	}
-
 
 	// Get customer info
 	var users []models.User
@@ -268,43 +267,30 @@ func (h *BookingHandler) CancelBooking(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	role, _ := c.Get("role")
 
-	updateData := map[string]interface{}{
-		"status":     "cancelled",
-		"updated_by": userID.(string),
-	}
-
-	query := h.supabase.From("bookings").
-		Update(updateData, "", "").
-		Eq("id", bookingID)
-
-	// If customer, only cancel their own bookings
+	// If customer, ensure booking belongs to them
 	if role.(string) == "customer" {
-		query = query.Eq("customer_id", userID.(string))
+		// Check ownership
+		var rows []map[string]interface{}
+		data, _, err := h.supabase.From("bookings").
+			Select("id", "", false).
+			Eq("id", bookingID).
+			Eq("customer_id", userID.(string)).
+			Execute()
+		if err != nil || json.Unmarshal(data, &rows) != nil || len(rows) == 0 {
+			c.JSON(http.StatusForbidden, models.Response{Success: false, Error: "Not allowed"})
+			return
+		}
 	}
 
-	var updatedBookings []models.Booking
-	data, _, err := query.Execute()
-	if err == nil {
-		err = json.Unmarshal(data, &updatedBookings)
-	}
+	// Delete child appointments first
+	_, _, _ = h.supabase.From("appointments").Delete("", "").Eq("booking_id", bookingID).Execute()
 
-	if err != nil || len(updatedBookings) == 0 {
-		c.JSON(http.StatusNotFound, models.Response{
-			Success: false,
-			Error:   "Booking not found or cancellation failed",
-		})
+	// Delete booking
+	delResp, _, err := h.supabase.From("bookings").Delete("", "").Eq("id", bookingID).Execute()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{Success: false, Error: "Failed to delete booking"})
 		return
 	}
 
-	// Update appointments status
-	h.supabase.From("appointments").
-		Update(map[string]interface{}{"status": "cancelled"}, "", "").
-		Eq("booking_id", bookingID).
-		Execute()
-
-	c.JSON(http.StatusOK, models.Response{
-		Success: true,
-		Message: "Booking cancelled successfully",
-		Data:    updatedBookings[0],
-	})
+	c.JSON(http.StatusOK, models.Response{Success: true, Message: "Booking cancelled successfully", Data: string(delResp)})
 }
