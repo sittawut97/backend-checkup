@@ -270,7 +270,11 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	}
 
 	// Set HttpOnly cookie for middleware to read
-	c.SetCookie("token", jwtToken, 86400, "/", "", false, true)
+	// Use SameSite=None for cross-domain cookie sharing
+	// Secure=false for localhost development, true for production
+	secure := c.Request.Host != "localhost:8080" && c.Request.Host != "127.0.0.1:8080"
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("token", jwtToken, 86400, "/", "", secure, true)
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
