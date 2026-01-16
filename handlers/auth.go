@@ -210,9 +210,9 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	// Validate OTP with SMSMKT
-	if err := h.sms.ValidateOTP(token, req.OTPCode, ""); err != nil {
-		fmt.Printf("SMSMKT validation error: %v\n", err)
+	// Validate OTP with SMS2PRO
+	if err := h.sms.ValidateOTP(token, req.OTPCode); err != nil {
+		fmt.Printf("SMS2PRO validation error: %v\n", err)
 
 		// Increment attempts
 		updateData := map[string]interface{}{
