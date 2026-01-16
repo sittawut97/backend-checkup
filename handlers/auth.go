@@ -211,7 +211,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	}
 
 	// Validate OTP with SMSMKT
-	if err := h.sms.ValidateOTP(token, req.OTPCode, "CHECKUP"); err != nil {
+	if err := h.sms.ValidateOTP(token, req.OTPCode, ""); err != nil {
 		fmt.Printf("SMSMKT validation error: %v\n", err)
 
 		// Increment attempts

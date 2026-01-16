@@ -29,7 +29,7 @@ func (s *SMSMKTClient) SendOTP(phone string) (string, error) {
 	payload := map[string]interface{}{
 		"project_key": s.ProjectKey,
 		"phone":       phone,
-		"ref_code":    "CHECKUP",
+		"ref_code":    "",
 	}
 
 	body, _ := json.Marshal(payload)
@@ -73,13 +73,14 @@ func (s *SMSMKTClient) SendOTP(phone string) (string, error) {
 
 func (s *SMSMKTClient) ValidateOTP(token, otpCode, refCode string) error {
 	payload := map[string]interface{}{
-		"token":    token,
 		"otp_code": otpCode,
+		"token":    token,
 		"ref_code": refCode,
 	}
 
 	body, _ := json.Marshal(payload)
 	fmt.Printf("[SMSMKT] ValidateOTP Request - Token: %s, OTP: %s, RefCode: %s\n", token, otpCode, refCode)
+	fmt.Printf("[SMSMKT] Request Payload: %s\n", string(body))
 
 	validateURL := "https://portal-otp.smsmkt.com/api/otp-validate"
 	req, err := http.NewRequest("POST", validateURL, bytes.NewBuffer(body))
