@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -273,8 +274,26 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// Use SameSite=None for cross-domain cookie sharing
 	// Secure=false for localhost development, true for production
 	secure := c.Request.Host != "localhost:8080" && c.Request.Host != "127.0.0.1:8080"
+	
+	// Extract domain from request origin for cross-domain cookies
+	// For production: use parent domain (e.g., .railway.app)
+	// For development: use localhost
+	domain := ""
+	if secure {
+		// Extract domain from origin header for production
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			// Parse domain from origin (e.g., https://backend-checkup-production.up.railway.app -> .up.railway.app)
+			if strings.Contains(origin, "railway.app") {
+				domain = ".up.railway.app"
+			} else if strings.Contains(origin, "vercel.app") {
+				domain = ".vercel.app"
+			}
+		}
+	}
+	
 	c.SetSameSite(http.SameSiteNoneMode)
-	c.SetCookie("token", jwtToken, 86400, "/", "", secure, true)
+	c.SetCookie("token", jwtToken, 86400, "/", domain, secure, true)
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
