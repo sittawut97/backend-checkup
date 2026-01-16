@@ -17,6 +17,7 @@ type Config struct {
 	SMSMKTSecretKey     string
 	SMSMKTProjectKey    string
 	SMSMKTURL           string
+	SMS2ProAPIKey       string
 }
 
 func NewConfig() *Config {
@@ -38,6 +39,7 @@ func NewConfig() *Config {
 		SMSMKTSecretKey:    os.Getenv("SMSMKT_SECRET_KEY"),
 		SMSMKTProjectKey:   os.Getenv("SMSMKT_PROJECT_KEY"),
 		SMSMKTURL:          os.Getenv("SMSMKT_URL"),
+		SMS2ProAPIKey:      os.Getenv("SMS2PRO_API_KEY"),
 	}
 }
 

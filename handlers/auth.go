@@ -24,10 +24,10 @@ import (
 type AuthHandler struct {
 	supabase *supa.Client
 	config   *config.Config
-	sms      *services.SMSMKTClient
+	sms      services.SMSClient
 }
 
-func NewAuthHandler(supabase *supa.Client, cfg *config.Config, smsClient *services.SMSMKTClient) *AuthHandler {
+func NewAuthHandler(supabase *supa.Client, cfg *config.Config, smsClient services.SMSClient) *AuthHandler {
 	return &AuthHandler{
 		supabase: supabase,
 		config:   cfg,

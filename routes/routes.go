@@ -9,7 +9,7 @@ import (
 	"github.com/sittawut/backend-appointment/services"
 )
 
-func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Config, smsClient *services.SMSMKTClient) {
+func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Config, smsClient services.SMSClient) {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(supabaseClient, cfg, smsClient)
 	bookingHandler := handlers.NewBookingHandler(supabaseClient, cfg)
