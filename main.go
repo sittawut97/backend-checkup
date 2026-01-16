@@ -23,16 +23,16 @@ func main() {
 	// Initialize Supabase client
 	supabaseClient := config.NewSupabaseClient(cfg)
 
-	// Initialize SMS client - using SMS2PRO
-	smsClient := services.NewSMS2ProClient(cfg.SMS2ProAPIKey)
+	// Initialize SMS client - using SMSMKT (SMS2PRO pending sender name activation)
+	smsClient := &services.SMSMKTClient{
+		APIKey:     cfg.SMSMKTKey,
+		SecretKey:  cfg.SMSMKTSecretKey,
+		ProjectKey: cfg.SMSMKTProjectKey,
+		URL:        cfg.SMSMKTURL,
+	}
 
-	// // SMSMKT client (commented for backward compatibility)
-	// smsClient := &services.SMSMKTClient{
-	// 	APIKey:     cfg.SMSMKTKey,
-	// 	SecretKey:  cfg.SMSMKTSecretKey,
-	// 	ProjectKey: cfg.SMSMKTProjectKey,
-	// 	URL:        cfg.SMSMKTURL,
-	// }
+	// // SMS2PRO client (commented - waiting for sender name activation)
+	// smsClient := services.NewSMS2ProClient(cfg.SMS2ProAPIKey)
 
 	// Set Gin mode
 	if cfg.Environment == "production" {

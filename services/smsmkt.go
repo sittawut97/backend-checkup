@@ -71,15 +71,15 @@ func (s *SMSMKTClient) SendOTP(phone string) (string, error) {
 	return smsmktResp.Result.Token, nil
 }
 
-func (s *SMSMKTClient) ValidateOTP(token, otpCode, refCode string) error {
+func (s *SMSMKTClient) ValidateOTP(token, otpCode string) error {
 	payload := map[string]interface{}{
 		"otp_code": otpCode,
 		"token":    token,
-		"ref_code": refCode,
+		"ref_code": "",
 	}
 
 	body, _ := json.Marshal(payload)
-	fmt.Printf("[SMSMKT] ValidateOTP Request - Token: %s, OTP: %s, RefCode: %s\n", token, otpCode, refCode)
+	fmt.Printf("[SMSMKT] ValidateOTP Request - Token: %s, OTP: %s\n", token, otpCode)
 	fmt.Printf("[SMSMKT] Request Payload: %s\n", string(body))
 
 	validateURL := "https://portal-otp.smsmkt.com/api/otp-validate"
