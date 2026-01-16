@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -270,14 +271,25 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	}
 
 	// Set HttpOnly cookie for middleware to read
-	// Use empty domain to let browser use current domain
+	// Use parent domain for cross-domain cookie sharing
 	// Secure=false for localhost development, true for production
 	secure := c.Request.Host != "localhost:8080" && c.Request.Host != "127.0.0.1:8080"
 	
-	fmt.Printf("[Cookie] Request Host: %s, Secure: %v\n", c.Request.Host, secure)
-	fmt.Printf("[Cookie] Setting HttpOnly cookie with empty domain\n")
+	// Determine domain based on request host
+	domain := ""
+	if secure {
+		// Production: use parent domain for cross-domain cookies
+		if strings.Contains(c.Request.Host, "railway.app") {
+			domain = ".up.railway.app"
+		} else if strings.Contains(c.Request.Host, "vercel.app") {
+			domain = ".vercel.app"
+		}
+	}
 	
-	c.SetCookie("token", jwtToken, 86400, "/", "", secure, true)
+	fmt.Printf("[Cookie] Request Host: %s, Secure: %v, Domain: %s\n", c.Request.Host, secure, domain)
+	fmt.Printf("[Cookie] Setting HttpOnly cookie\n")
+	
+	c.SetCookie("token", jwtToken, 86400, "/", domain, secure, true)
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
