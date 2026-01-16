@@ -269,6 +269,9 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
+	// Set HttpOnly cookie for middleware to read
+	c.SetCookie("token", jwtToken, 86400, "/", "", false, true)
+
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
 		Message: "Login successful",
