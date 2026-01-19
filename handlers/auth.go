@@ -274,7 +274,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// Use parent domain for cross-domain cookie sharing
 	// Secure=false for localhost development, true for production
 	secure := c.Request.Host != "localhost:8080" && c.Request.Host != "127.0.0.1:8080"
-	
+
 	// Determine domain based on request host
 	domain := ""
 	if secure {
@@ -285,10 +285,10 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 			domain = ".vercel.app"
 		}
 	}
-	
+
 	fmt.Printf("[Cookie] Request Host: %s, Secure: %v, Domain: %s\n", c.Request.Host, secure, domain)
 	fmt.Printf("[Cookie] Setting HttpOnly cookie\n")
-	
+
 	c.SetCookie("token", jwtToken, 86400, "/", domain, secure, true)
 
 	c.JSON(http.StatusOK, models.Response{
@@ -312,12 +312,15 @@ func (h *AuthHandler) generateOTP() string {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("[Register] Binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, models.Response{
 			Success: false,
 			Error:   "Invalid request body",
 		})
 		return
 	}
+
+	fmt.Printf("[Register] Request - Phone: %s, FullName: %s, Gender: %v\n", req.Phone, req.FullName, req.Gender)
 
 	// Check if phone already exists
 	var existingUsers []models.User
@@ -329,6 +332,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err == nil {
 		json.Unmarshal(data, &existingUsers)
 		if len(existingUsers) > 0 {
+			fmt.Printf("[Register] Phone already exists: %s\n", req.Phone)
 			c.JSON(http.StatusConflict, models.Response{
 				Success: false,
 				Error:   "Phone number already registered",
@@ -337,20 +341,40 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 	}
 
-	// Create new user
+	// Build new user object, including only provided optional fields
 	newUser := map[string]interface{}{
-		"id":           uuid.New().String(),
-		"phone":        req.Phone,
-		"full_name":    req.FullName,
-		"birth_date":   req.BirthDate,
-		"gender":       req.Gender,
-		"email":        req.Email,
-		"address":      req.Address,
-		"blood_type":   req.BloodType,
-		"age":          req.Age,
-		"company_name": req.CompanyName,
-		"role":         "customer",
-		"is_active":    true,
+		"id":        uuid.New().String(),
+		"phone":     req.Phone,
+		"full_name": req.FullName,
+		"role":      "customer",
+		"is_active": true,
+	}
+
+	// helper to add string pointer if not nil/empty
+	addString := func(key string, val *string) {
+		if val != nil && *val != "" {
+			newUser[key] = *val
+		}
+	}
+
+	addString("birth_date", req.BirthDate)
+	{
+		genderVal := "other"
+		if req.Gender != nil {
+			g := strings.ToLower(strings.TrimSpace(*req.Gender))
+			if g == "male" || g == "female" || g == "other" {
+				genderVal = g
+			}
+		}
+		newUser["gender"] = genderVal
+	}
+	addString("email", req.Email)
+	addString("address", req.Address)
+	addString("blood_type", req.BloodType)
+	addString("company_name", req.CompanyName)
+
+	if req.Age != nil {
+		newUser["age"] = *req.Age
 	}
 
 	var createdUsers []models.User
@@ -359,6 +383,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Execute()
 
 	if err != nil {
+		fmt.Printf("[Register] Supabase insert error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Failed to create user",
