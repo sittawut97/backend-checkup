@@ -17,6 +17,7 @@ type User struct {
 	Role        string    `json:"role" db:"role"`
 	EmployeeID  *string   `json:"employee_id,omitempty" db:"employee_id"`
 	Department  *string   `json:"department,omitempty" db:"department"`
+	JobTitle    *string   `json:"job_title,omitempty" db:"job_title"`
 	IsActive    bool      `json:"is_active" db:"is_active"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
@@ -28,12 +29,12 @@ type LoginRequest struct {
 
 type LoginResponse struct {
 	Token string `json:"token"`
-	User  User   `json:"user"`
+	User  *User  `json:"user"`
 }
 
 type RegisterRequest struct {
-	Phone    string  `json:"phone" binding:"required"`
-	FullName string  `json:"full_name" binding:"required"`
+	Phone       string  `json:"phone" binding:"required"`
+	FullName    string  `json:"full_name" binding:"required"`
 	BirthDate   *string `json:"birth_date,omitempty"`
 	Gender      *string `json:"gender,omitempty"`
 	Email       *string `json:"email,omitempty"`

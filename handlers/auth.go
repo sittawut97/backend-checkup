@@ -38,24 +38,17 @@ func NewAuthHandler(supabase *supa.Client, cfg *config.Config, smsClient service
 
 // RequestOTP generates and sends OTP to user's phone
 func (h *AuthHandler) RequestOTP(c *gin.Context) {
-	// Log raw body for debugging
 	bodyBytes, _ := c.GetRawData()
-	fmt.Printf("Raw request body: %s\n", string(bodyBytes))
-
-	// Reset body for binding
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	var req models.RequestOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("Request OTP binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, models.Response{
 			Success: false,
 			Error:   fmt.Sprintf("Invalid request body: %v", err),
 		})
 		return
 	}
-
-	fmt.Printf("Request OTP for phone: %s\n", req.Phone)
 
 	// Check if user exists
 	var users []models.User
@@ -82,7 +75,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	}
 
 	// Invalidate all previous unused OTPs for this phone
-	h.supabase.From("otp_codes").
+	_, _, _ = h.supabase.From("otp_codes").
 		Update(map[string]interface{}{"is_used": true}, "", "").
 		Eq("phone", req.Phone).
 		Eq("is_used", "false").
@@ -91,15 +84,12 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	// Send OTP via SMSMKT
 	token, err := h.sms.SendOTP(req.Phone)
 	if err != nil {
-		fmt.Printf("Failed to send SMS: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Failed to send OTP",
 		})
 		return
 	}
-
-	fmt.Printf("OTP sent to %s, token: %s\n", req.Phone, token)
 
 	expiresAt := time.Now().Add(5 * time.Minute)
 
@@ -139,15 +129,12 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req models.VerifyOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("Verify OTP binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, models.Response{
 			Success: false,
 			Error:   fmt.Sprintf("Invalid request body: %v", err),
 		})
 		return
 	}
-
-	fmt.Printf("Verify OTP - Phone: %s, OTP: %s\n", req.Phone, req.OTPCode)
 
 	// Get latest unused OTP for this phone
 	var otps []models.OTP
@@ -159,7 +146,6 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		Execute()
 
 	if err != nil {
-		fmt.Printf("Database query error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Database query failed",
@@ -168,7 +154,6 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	}
 
 	if err := json.Unmarshal(data, &otps); err != nil || len(otps) == 0 {
-		fmt.Printf("Unmarshal error or no OTPs found. Error: %v, OTPs count: %d\n", err, len(otps))
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Success: false,
 			Error:   "No valid OTP found",
@@ -179,12 +164,11 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// We ordered by created_at DESC, so the latest record is the first element.
 	otp := otps[0]
 	token := otp.ID
-	fmt.Printf("Found token: %s, Expires: %v, IsUsed: %v, Attempts: %d\n", token, otp.ExpiresAt, otp.IsUsed, otp.Attempts)
 
 	// Check if OTP is expired
 	if time.Now().After(otp.ExpiresAt) {
 		// Mark OTP as used so it cannot be reused.
-		h.supabase.From("otp_codes").
+		_, _, _ = h.supabase.From("otp_codes").
 			Update(map[string]interface{}{"is_used": true}, "", "").
 			Eq("id", otp.ID).
 			Execute()
@@ -199,7 +183,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// Check attempts
 	if otp.Attempts >= 3 {
 		// Mark OTP as used so it cannot be reused.
-		h.supabase.From("otp_codes").
+		_, _, _ = h.supabase.From("otp_codes").
 			Update(map[string]interface{}{"is_used": true}, "", "").
 			Eq("id", otp.ID).
 			Execute()
@@ -213,8 +197,6 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 
 	// Validate OTP with SMS2PRO
 	if err := h.sms.ValidateOTP(token, req.OTPCode); err != nil {
-		fmt.Printf("SMS2PRO validation error: %v\n", err)
-
 		// Increment attempts
 		updateData := map[string]interface{}{
 			"attempts": otp.Attempts + 1,
@@ -231,13 +213,11 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("OTP validated successfully for phone: %s\n", req.Phone)
-
 	// Mark OTP as used
 	updateData := map[string]interface{}{
 		"is_used": true,
 	}
-	h.supabase.From("otp_codes").
+	_, _, _ = h.supabase.From("otp_codes").
 		Update(updateData, "", "").
 		Eq("id", otp.ID).
 		Execute()
@@ -286,17 +266,14 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		}
 	}
 
-	fmt.Printf("[Cookie] Request Host: %s, Secure: %v, Domain: %s\n", c.Request.Host, secure, domain)
-	fmt.Printf("[Cookie] Setting HttpOnly cookie\n")
-
 	c.SetCookie("token", jwtToken, 86400, "/", domain, secure, true)
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
 		Message: "Login successful",
 		Data: models.LoginResponse{
-			Token: jwtToken, // ← เปลี่ยนเป็น jwtToken
-			User:  user,
+			Token: jwtToken,
+			User:  &user,
 		},
 	})
 
@@ -312,15 +289,12 @@ func (h *AuthHandler) generateOTP() string {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("[Register] Binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, models.Response{
 			Success: false,
 			Error:   "Invalid request body",
 		})
 		return
 	}
-
-	fmt.Printf("[Register] Request - Phone: %s, FullName: %s, Gender: %v\n", req.Phone, req.FullName, req.Gender)
 
 	// Check if phone already exists
 	var existingUsers []models.User
@@ -332,7 +306,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err == nil {
 		json.Unmarshal(data, &existingUsers)
 		if len(existingUsers) > 0 {
-			fmt.Printf("[Register] Phone already exists: %s\n", req.Phone)
 			c.JSON(http.StatusConflict, models.Response{
 				Success: false,
 				Error:   "Phone number already registered",
@@ -383,7 +356,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Execute()
 
 	if err != nil {
-		fmt.Printf("[Register] Supabase insert error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Failed to create user",
@@ -416,12 +388,50 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Message: "Registration successful",
 		Data: models.LoginResponse{
 			Token: token,
-			User:  user,
+			User:  &user,
 		},
 	})
 }
 
 func (h *AuthHandler) GetMe(c *gin.Context) {
+	provider, _ := c.Get("provider")
+	getString := func(key string) string {
+		if value, exists := c.Get(key); exists {
+			if str, ok := value.(string); ok {
+				return str
+			}
+		}
+		return ""
+	}
+
+	if provider == "azure" {
+		user := models.User{
+			ID:       getString("user_id"),
+			Phone:    getString("phone"),
+			FullName: getString("full_name"),
+			Role:     getString("role"),
+			IsActive: true,
+		}
+		if email := getString("email"); email != "" {
+			user.Email = &email
+		}
+		if employeeID := getString("employee_id"); employeeID != "" {
+			user.EmployeeID = &employeeID
+		}
+		if department := getString("department"); department != "" {
+			user.Department = &department
+		}
+		if jobTitle := getString("job_title"); jobTitle != "" {
+			user.JobTitle = &jobTitle
+		}
+
+		c.JSON(http.StatusOK, models.Response{
+			Success: true,
+			Data:    user,
+		})
+		return
+	}
+
 	userID, _ := c.Get("user_id")
 
 	var users []models.User

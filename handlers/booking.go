@@ -112,8 +112,10 @@ func (h *BookingHandler) GetBookingByID(c *gin.Context) {
 		Eq("id", bookingID)
 
 	// If customer, only show their own bookings
-	if role.(string) == "customer" {
-		query = query.Eq("customer_id", userID.(string))
+	roleStr, ok := role.(string)
+	userIDStr, ok2 := userID.(string)
+	if ok && ok2 && roleStr == "customer" {
+		query = query.Eq("customer_id", userIDStr)
 	}
 
 	var bookings []models.Booking
@@ -208,12 +210,22 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 
 	// Default customer_id to authenticated user if not provided
 	if req.CustomerID == "" {
-		req.CustomerID = userID.(string)
+		userIDStr, ok := userID.(string)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.Response{
+				Success: false,
+				Error:   "Invalid user context",
+			})
+			return
+		}
+		req.CustomerID = userIDStr
 	}
 
 	// Verify customer_id matches authenticated user (unless nurse/admin)
 	role, _ := c.Get("role")
-	if role.(string) == "customer" && req.CustomerID != userID.(string) {
+	roleStr, ok := role.(string)
+	userIDStr, ok2 := userID.(string)
+	if ok && ok2 && roleStr == "customer" && req.CustomerID != userIDStr {
 		c.JSON(http.StatusForbidden, models.Response{
 			Success: false,
 			Error:   "Cannot create booking for another user",
@@ -312,15 +324,25 @@ func (h *BookingHandler) UpdateBooking(c *gin.Context) {
 	if req.Notes != nil {
 		updateData["notes"] = *req.Notes
 	}
-	updateData["updated_by"] = userID.(string)
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   "Invalid user context",
+		})
+		return
+	}
+	updateData["updated_by"] = userIDStr
 
 	query := h.supabase.From("bookings").
 		Update(updateData, "", "").
 		Eq("id", bookingID)
 
 	// If customer, only update their own bookings
-	if role.(string) == "customer" {
-		query = query.Eq("customer_id", userID.(string))
+	roleStr, okRole := role.(string)
+	userIDStr2, okUserID := userID.(string)
+	if okRole && okUserID && roleStr == "customer" {
+		query = query.Eq("customer_id", userIDStr2)
 	}
 
 	var updatedBookings []models.Booking

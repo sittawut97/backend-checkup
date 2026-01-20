@@ -2,16 +2,17 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	supa "github.com/supabase-community/supabase-go"
 	"github.com/sittawut/backend-appointment/config"
 	"github.com/sittawut/backend-appointment/handlers"
 	"github.com/sittawut/backend-appointment/middleware"
 	"github.com/sittawut/backend-appointment/services"
+	supa "github.com/supabase-community/supabase-go"
 )
 
 func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Config, smsClient services.SMSClient) {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(supabaseClient, cfg, smsClient)
+	azureAuthHandler := handlers.NewAzureAuthHandler(supabaseClient, cfg)
 	bookingHandler := handlers.NewBookingHandler(supabaseClient, cfg)
 	doctorHandler := handlers.NewDoctorHandler(supabaseClient, cfg)
 	nurseHandler := handlers.NewNurseHandler(supabaseClient, cfg)
@@ -33,6 +34,9 @@ func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Co
 			auth.POST("/request-otp", authHandler.RequestOTP)
 			auth.POST("/verify-otp", authHandler.VerifyOTP)
 			auth.POST("/register", authHandler.Register)
+			auth.GET("/azure/callback", azureAuthHandler.AzureCallback)
+
+			auth.POST("/logout", azureAuthHandler.Logout)
 		}
 
 		// Public routes - Doctors and schedules (no auth required)

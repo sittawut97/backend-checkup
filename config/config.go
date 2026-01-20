@@ -6,18 +6,22 @@ import (
 )
 
 type Config struct {
-	SupabaseURL         string
-	SupabaseAnonKey     string
-	SupabaseServiceKey  string
-	JWTSecret           string
-	Port                string
-	Environment         string
-	AllowedOrigins      []string
-	SMSMKTKey           string
-	SMSMKTSecretKey     string
-	SMSMKTProjectKey    string
-	SMSMKTURL           string
-	SMS2ProAPIKey       string
+	SupabaseURL        string
+	SupabaseAnonKey    string
+	SupabaseServiceKey string
+	JWTSecret          string
+	Port               string
+	Environment        string
+	AllowedOrigins     []string
+	SMSMKTKey          string
+	SMSMKTSecretKey    string
+	SMSMKTProjectKey   string
+	SMSMKTURL          string
+	SMS2ProAPIKey      string
+	AzureClientID      string
+	AzureClientSecret  string
+	AzureTenantID      string
+	AzureRedirectURI   string
 }
 
 func NewConfig() *Config {
@@ -40,6 +44,10 @@ func NewConfig() *Config {
 		SMSMKTProjectKey:   os.Getenv("SMSMKT_PROJECT_KEY"),
 		SMSMKTURL:          os.Getenv("SMSMKT_URL"),
 		SMS2ProAPIKey:      os.Getenv("SMS2PRO_API_KEY"),
+		AzureClientID:      os.Getenv("AZURE_CLIENT_ID"),
+		AzureClientSecret:  os.Getenv("AZURE_CLIENT_SECRET"),
+		AzureTenantID:      os.Getenv("AZURE_TENANT_ID"),
+		AzureRedirectURI:   os.Getenv("AZURE_REDIRECT_URI"),
 	}
 }
 
