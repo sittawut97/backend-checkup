@@ -74,6 +74,7 @@ func (h *AzureAuthHandler) AzureCallback(c *gin.Context) {
 	// Exchange code for token
 	token, err := h.exchangeCodeForToken(code)
 	if err != nil {
+		fmt.Printf("[Azure] Token exchange error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Failed to authenticate with Azure",
@@ -84,6 +85,7 @@ func (h *AzureAuthHandler) AzureCallback(c *gin.Context) {
 	// Get user info from Azure AD
 	userInfo, err := h.getUserInfo(token.AccessToken)
 	if err != nil {
+		fmt.Printf("[Azure] Get user info error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Failed to get user information",
