@@ -35,6 +35,7 @@ func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Co
 			auth.POST("/verify-otp", authHandler.VerifyOTP)
 			auth.POST("/register", authHandler.Register)
 			auth.GET("/azure/callback", azureAuthHandler.AzureCallback)
+			auth.POST("/azure/token", azureAuthHandler.AzureCreateToken)
 
 			auth.POST("/logout", azureAuthHandler.Logout)
 		}

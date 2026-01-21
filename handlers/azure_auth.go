@@ -58,7 +58,39 @@ type AzureUserInfo struct {
 	Department  string `json:"department"`
 }
 
-// AzureCallback handles Azure AD OAuth callback
+// AzureCreateToken creates JWT token from user info (called by NextJS callback)
+func (h *AzureAuthHandler) AzureCreateToken(c *gin.Context) {
+	var userInfo AzureUserInfo
+	if err := c.ShouldBindJSON(&userInfo); err != nil {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+		return
+	}
+
+	azureUser := buildAzureUser(&userInfo)
+	jwtToken, err := h.generateToken(azureUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   "Failed to generate token",
+		})
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "Token created successfully",
+		Data: models.LoginResponse{
+			Token: jwtToken,
+			User:  azureUser,
+		},
+	})
+}
+
+// AzureCallback handles Azure AD OAuth callback (deprecated - use NextJS callback instead)
 func (h *AzureAuthHandler) AzureCallback(c *gin.Context) {
 	code := c.Query("code")
 	// state := c.Query("state")
