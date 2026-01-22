@@ -23,16 +23,19 @@ func main() {
 	// Initialize Supabase client
 	supabaseClient := config.NewSupabaseClient(cfg)
 
-	// Initialize SMS client - using SMSMKT (SMS2PRO pending sender name activation)
-	smsClient := &services.SMSMKTClient{
-		APIKey:     cfg.SMSMKTKey,
-		SecretKey:  cfg.SMSMKTSecretKey,
-		ProjectKey: cfg.SMSMKTProjectKey,
-		URL:        cfg.SMSMKTURL,
+	// Initialize SMS client - using THSMS
+	var smsClient services.SMSClient
+	if cfg.THSMSToken != "" {
+		smsClient = services.NewTHSMSClientImpl(cfg.THSMSToken, cfg.THSMSBaseURL, cfg.THSMSSender)
+	} else {
+		// Fallback to SMSMKT if THSMS not configured
+		smsClient = &services.SMSMKTClient{
+			APIKey:     cfg.SMSMKTKey,
+			SecretKey:  cfg.SMSMKTSecretKey,
+			ProjectKey: cfg.SMSMKTProjectKey,
+			URL:        cfg.SMSMKTURL,
+		}
 	}
-
-	// // SMS2PRO client (commented - waiting for sender name activation)
-	// smsClient := services.NewSMS2ProClient(cfg.SMS2ProAPIKey)
 
 	// Set Gin mode
 	if cfg.Environment == "production" {

@@ -136,7 +136,7 @@ func (h *AzureAuthHandler) AzureCallback(c *gin.Context) {
 	}
 
 	// Set HttpOnly cookie
-	secure := c.Request.Host != "localhost:3000" && c.Request.Host != "127.0.0.1:3000"
+	secure := c.Request.Host != "localhost:3000" && c.Request.Host != "127.0.0.1:3000" && c.Request.Host != "localhost:8080" && c.Request.Host != "127.0.0.1:8080"
 	domain := ""
 	if secure {
 		if strings.Contains(c.Request.Host, "railway.app") {

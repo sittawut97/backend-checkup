@@ -12,6 +12,7 @@ import (
 func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Config, smsClient services.SMSClient) {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(supabaseClient, cfg, smsClient)
+	otpHandler := handlers.NewOTPHandler(supabaseClient, cfg, smsClient)
 	azureAuthHandler := handlers.NewAzureAuthHandler(supabaseClient, cfg)
 	bookingHandler := handlers.NewBookingHandler(supabaseClient, cfg)
 	doctorHandler := handlers.NewDoctorHandler(supabaseClient, cfg)
@@ -31,6 +32,11 @@ func SetupRoutes(router *gin.Engine, supabaseClient *supa.Client, cfg *config.Co
 		// Auth routes (public)
 		auth := v1.Group("/auth")
 		{
+			// OTP Login (THSMS)
+			auth.POST("/otp/request", otpHandler.RequestOTP)
+			auth.POST("/otp/verify", otpHandler.VerifyOTP)
+
+			// Legacy auth
 			auth.POST("/request-otp", authHandler.RequestOTP)
 			auth.POST("/verify-otp", authHandler.VerifyOTP)
 			auth.POST("/register", authHandler.Register)

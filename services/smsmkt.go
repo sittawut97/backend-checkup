@@ -26,6 +26,9 @@ type SMSMKTResponse struct {
 }
 
 func (s *SMSMKTClient) SendOTP(phone string) (string, error) {
+	fmt.Printf("[SMSMKT] SendOTP - Phone: %s\n", phone)
+	fmt.Printf("[SMSMKT] Config - URL: %s, APIKey: %s, ProjectKey: %s\n", s.URL, s.APIKey, s.ProjectKey)
+
 	payload := map[string]interface{}{
 		"project_key": s.ProjectKey,
 		"phone":       phone,
@@ -33,9 +36,11 @@ func (s *SMSMKTClient) SendOTP(phone string) (string, error) {
 	}
 
 	body, _ := json.Marshal(payload)
+	fmt.Printf("[SMSMKT] Request Payload: %s\n", string(body))
 
 	req, err := http.NewRequest("POST", s.URL, bytes.NewBuffer(body))
 	if err != nil {
+		fmt.Printf("[SMSMKT] Request creation error: %v\n", err)
 		return "", err
 	}
 
@@ -46,28 +51,40 @@ func (s *SMSMKTClient) SendOTP(phone string) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Printf("[SMSMKT] HTTP request error: %v\n", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
+	fmt.Printf("[SMSMKT] Response Status: %d\n", resp.StatusCode)
+
 	if resp.StatusCode >= 300 {
-		return "", fmt.Errorf("SMSMKT failed with status %d", resp.StatusCode)
+		bodyStr, _ := io.ReadAll(resp.Body)
+		fmt.Printf("[SMSMKT] Error response: %s\n", string(bodyStr))
+		return "", fmt.Errorf("SMSMKT failed with status %d: %s", resp.StatusCode, string(bodyStr))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Printf("[SMSMKT] Body read error: %v\n", err)
 		return "", err
 	}
 
+	fmt.Printf("[SMSMKT] Response Body: %s\n", string(respBody))
+
 	var smsmktResp SMSMKTResponse
 	if err := json.Unmarshal(respBody, &smsmktResp); err != nil {
+		fmt.Printf("[SMSMKT] JSON unmarshal error: %v\n", err)
 		return "", err
 	}
+
+	fmt.Printf("[SMSMKT] Parsed Response - Code: %s, Detail: %s\n", smsmktResp.Code, smsmktResp.Detail)
 
 	if smsmktResp.Code != "000" {
 		return "", fmt.Errorf("SMSMKT error: %s", smsmktResp.Detail)
 	}
 
+	fmt.Printf("[SMSMKT] Token received: %s\n", smsmktResp.Result.Token)
 	return smsmktResp.Result.Token, nil
 }
 

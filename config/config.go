@@ -18,6 +18,9 @@ type Config struct {
 	SMSMKTProjectKey   string
 	SMSMKTURL          string
 	SMS2ProAPIKey      string
+	THSMSToken         string
+	THSMSBaseURL       string
+	THSMSSender        string
 	AzureClientID      string
 	AzureClientSecret  string
 	AzureTenantID      string
@@ -44,6 +47,9 @@ func NewConfig() *Config {
 		SMSMKTProjectKey:   os.Getenv("SMSMKT_PROJECT_KEY"),
 		SMSMKTURL:          os.Getenv("SMSMKT_URL"),
 		SMS2ProAPIKey:      os.Getenv("SMS2PRO_API_KEY"),
+		THSMSToken:         os.Getenv("THSMS_API_TOKEN"),
+		THSMSBaseURL:       os.Getenv("THSMS_BASE_URL"),
+		THSMSSender:        os.Getenv("THSMS_SENDER"),
 		AzureClientID:      os.Getenv("AZURE_CLIENT_ID"),
 		AzureClientSecret:  os.Getenv("AZURE_CLIENT_SECRET"),
 		AzureTenantID:      os.Getenv("AZURE_TENANT_ID"),

@@ -38,7 +38,14 @@ func NewAuthHandler(supabase *supa.Client, cfg *config.Config, smsClient service
 
 // RequestOTP generates and sends OTP to user's phone
 func (h *AuthHandler) RequestOTP(c *gin.Context) {
-	bodyBytes, _ := c.GetRawData()
+	bodyBytes, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.Response{
+			Success: false,
+			Error:   "Failed to read request body",
+		})
+		return
+	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	var req models.RequestOTPRequest
@@ -52,6 +59,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 
 	// Check if user exists
 	var users []models.User
+	fmt.Printf("[RequestOTP] Phone: %s\n", req.Phone)
 	data, _, err := h.supabase.From("users").
 		Select("id,phone,full_name,is_active", "", false).
 		Eq("phone", req.Phone).
@@ -59,6 +67,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		Execute()
 
 	if err != nil {
+		fmt.Printf("[RequestOTP] Database error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Database query failed",
@@ -66,7 +75,18 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		return
 	}
 
-	if err := json.Unmarshal(data, &users); err != nil || len(users) == 0 {
+	fmt.Printf("[RequestOTP] Query data: %s\n", string(data))
+	if err := json.Unmarshal(data, &users); err != nil {
+		fmt.Printf("[RequestOTP] Unmarshal error: %v\n", err)
+		c.JSON(http.StatusNotFound, models.Response{
+			Success: false,
+			Error:   "Phone number not found",
+		})
+		return
+	}
+
+	if len(users) == 0 {
+		fmt.Printf("[RequestOTP] No users found for phone: %s\n", req.Phone)
 		c.JSON(http.StatusNotFound, models.Response{
 			Success: false,
 			Error:   "Phone number not found",
@@ -75,22 +95,27 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	}
 
 	// Invalidate all previous unused OTPs for this phone
-	_, _, _ = h.supabase.From("otp_codes").
+	if _, _, err := h.supabase.From("otp_codes").
 		Update(map[string]interface{}{"is_used": true}, "", "").
 		Eq("phone", req.Phone).
 		Eq("is_used", "false").
-		Execute()
+		Execute(); err != nil {
+		fmt.Printf("[RequestOTP] Warning: Failed to invalidate previous OTPs: %v\n", err)
+	}
 
 	// Send OTP via SMSMKT
+	fmt.Printf("[RequestOTP] Sending OTP to phone: %s\n", req.Phone)
 	token, err := h.sms.SendOTP(req.Phone)
 	if err != nil {
+		fmt.Printf("[RequestOTP] SMSMKT error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
-			Error:   "Failed to send OTP",
+			Error:   fmt.Sprintf("Failed to send OTP: %v", err),
 		})
 		return
 	}
 
+	fmt.Printf("[RequestOTP] OTP token received: %s\n", token)
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	// Save token to database (use id field to store token)
@@ -103,17 +128,21 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		"attempts":   0,
 	}
 
+	fmt.Printf("[RequestOTP] Saving OTP data: %+v\n", otpData)
 	_, _, err = h.supabase.From("otp_codes").
 		Insert(otpData, false, "", "", "").
 		Execute()
 
 	if err != nil {
+		fmt.Printf("[RequestOTP] Database insert error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
-			Error:   "Failed to save OTP token",
+			Error:   fmt.Sprintf("Failed to save OTP token: %v", err),
 		})
 		return
 	}
+
+	fmt.Printf("[RequestOTP] OTP sent successfully\n")
 
 	c.JSON(http.StatusOK, models.Response{
 		Success: true,
@@ -168,10 +197,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// Check if OTP is expired
 	if time.Now().After(otp.ExpiresAt) {
 		// Mark OTP as used so it cannot be reused.
-		_, _, _ = h.supabase.From("otp_codes").
+		if _, _, err := h.supabase.From("otp_codes").
 			Update(map[string]interface{}{"is_used": true}, "", "").
 			Eq("id", otp.ID).
-			Execute()
+			Execute(); err != nil {
+			fmt.Printf("[VerifyOTP] Warning: Failed to mark expired OTP as used: %v\n", err)
+		}
 
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Success: false,
@@ -183,10 +214,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	// Check attempts
 	if otp.Attempts >= 3 {
 		// Mark OTP as used so it cannot be reused.
-		_, _, _ = h.supabase.From("otp_codes").
+		if _, _, err := h.supabase.From("otp_codes").
 			Update(map[string]interface{}{"is_used": true}, "", "").
 			Eq("id", otp.ID).
-			Execute()
+			Execute(); err != nil {
+			fmt.Printf("[VerifyOTP] Warning: Failed to mark OTP as used after max attempts: %v\n", err)
+		}
 
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Success: false,
@@ -201,10 +234,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		updateData := map[string]interface{}{
 			"attempts": otp.Attempts + 1,
 		}
-		h.supabase.From("otp_codes").
+		if _, _, updateErr := h.supabase.From("otp_codes").
 			Update(updateData, "", "").
 			Eq("id", otp.ID).
-			Execute()
+			Execute(); updateErr != nil {
+			fmt.Printf("[VerifyOTP] Warning: Failed to increment attempts: %v\n", updateErr)
+		}
 
 		c.JSON(http.StatusUnauthorized, models.Response{
 			Success: false,
@@ -217,10 +252,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	updateData := map[string]interface{}{
 		"is_used": true,
 	}
-	_, _, _ = h.supabase.From("otp_codes").
+	if _, _, err := h.supabase.From("otp_codes").
 		Update(updateData, "", "").
 		Eq("id", otp.ID).
-		Execute()
+		Execute(); err != nil {
+		fmt.Printf("[VerifyOTP] Warning: Failed to mark OTP as used: %v\n", err)
+	}
 
 	// Get user details
 	var users []models.User
@@ -230,7 +267,15 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		Eq("is_active", "true").
 		Execute()
 
-	if err != nil || json.Unmarshal(userData, &users) != nil || len(users) == 0 {
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   "Database query failed",
+		})
+		return
+	}
+
+	if err := json.Unmarshal(userData, &users); err != nil || len(users) == 0 {
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
 			Error:   "Failed to get user details",
