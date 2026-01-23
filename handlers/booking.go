@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -201,12 +202,16 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 
 	var req models.CreateBookingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("[CreateBooking] Bind error: %v\n", err)
 		c.JSON(http.StatusBadRequest, models.Response{
 			Success: false,
 			Error:   "Invalid request body",
 		})
 		return
 	}
+
+	fmt.Printf("[CreateBooking] Request received - CustomerID: %s, AppointmentDate: %s, Appointments: %d\n",
+		req.CustomerID, req.AppointmentDate, len(req.Appointments))
 
 	// Default customer_id to authenticated user if not provided
 	if req.CustomerID == "" {
@@ -239,25 +244,46 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 		"appointment_date": req.AppointmentDate,
 		"status":           "pending",
 		"notes":            req.Notes,
-		"created_by":       userID.(string),
+		"created_by":       userIDStr,
+		"updated_by":       userIDStr,
 	}
 
 	if req.Status != "" {
 		bookingData["status"] = req.Status
 	}
 
+	fmt.Printf("[CreateBooking] Booking data to insert: %+v\n", bookingData)
+
 	var createdBookings []models.Booking
 	data, _, err := h.supabase.From("bookings").
 		Insert(bookingData, false, "", "", "").
 		Execute()
-	if err == nil {
-		err = json.Unmarshal(data, &createdBookings)
-	}
 
-	if err != nil || len(createdBookings) == 0 {
+	fmt.Printf("[CreateBooking] Response data: %s, Error: %v\n", string(data), err)
+
+	if err != nil {
+		fmt.Printf("[CreateBooking] Insert error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
-			Error:   "Failed to create booking",
+			Error:   fmt.Sprintf("Failed to create booking: %v", err),
+		})
+		return
+	}
+
+	if err := json.Unmarshal(data, &createdBookings); err != nil {
+		fmt.Printf("[CreateBooking] Unmarshal error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to parse booking response: %v", err),
+		})
+		return
+	}
+
+	if len(createdBookings) == 0 {
+		fmt.Printf("[CreateBooking] No bookings returned from insert\n")
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   "No booking created",
 		})
 		return
 	}
@@ -265,7 +291,10 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 	booking := createdBookings[0]
 
 	// Create appointments
-	for _, apt := range req.Appointments {
+	for i, apt := range req.Appointments {
+		fmt.Printf("[CreateBooking] Creating appointment %d: TimeSlotID=%s, DoctorID=%s, ServiceType=%s\n",
+			i, apt.TimeSlotID, apt.DoctorID, apt.ServiceType)
+
 		appointmentData := map[string]interface{}{
 			"booking_id":   booking.ID,
 			"time_slot_id": apt.TimeSlotID,
@@ -280,12 +309,15 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 			Insert(appointmentData, false, "", "", "").
 			Execute()
 
+		fmt.Printf("[CreateBooking] Appointment %d response: %s, Error: %v\n", i, string(aptData), err)
+
 		if err != nil {
+			fmt.Printf("[CreateBooking] Appointment creation failed, rolling back booking\n")
 			// Rollback: delete booking if appointment creation fails
 			h.supabase.From("bookings").Delete("", "").Eq("id", booking.ID).Execute()
 			c.JSON(http.StatusInternalServerError, models.Response{
 				Success: false,
-				Error:   "Failed to create appointments",
+				Error:   fmt.Sprintf("Failed to create appointments: %v", err),
 			})
 			return
 		}

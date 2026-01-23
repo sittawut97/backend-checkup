@@ -509,9 +509,19 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 
 func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
+	userIDStr, ok := userID.(string)
+	if !ok {
+		fmt.Printf("[UpdateProfile] Invalid user_id type\n")
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   "Invalid user context",
+		})
+		return
+	}
 
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("[UpdateProfile] Bind error: %v\n", err)
 		c.JSON(http.StatusBadRequest, models.Response{
 			Success: false,
 			Error:   "Invalid request body",
@@ -519,27 +529,53 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Remove fields that shouldn't be updated
+	fmt.Printf("[UpdateProfile] Updating user %s with data: %+v\n", userIDStr, req)
+
+	// Remove fields that shouldn't be updated or don't exist in schema
 	delete(req, "id")
 	delete(req, "phone")
 	delete(req, "role")
 	delete(req, "created_at")
+	delete(req, "updated_at")
+	delete(req, "age")
+	delete(req, "company_name")
+	delete(req, "employee_id")
+	delete(req, "department")
+	delete(req, "is_active")
+	delete(req, "password_hash")
+	delete(req, "email_verified")
+	delete(req, "company_id")
+
+	fmt.Printf("[UpdateProfile] Cleaned data: %+v\n", req)
 
 	var updatedUsers []models.User
 	data, _, err := h.supabase.From("users").
 		Update(req, "", "").
-		Eq("id", userID.(string)).
+		Eq("id", userIDStr).
 		Execute()
 
+	fmt.Printf("[UpdateProfile] Update response: %s, Error: %v\n", string(data), err)
+
 	if err != nil {
+		fmt.Printf("[UpdateProfile] Update error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, models.Response{
 			Success: false,
-			Error:   "Failed to update profile",
+			Error:   fmt.Sprintf("Failed to update profile: %v", err),
 		})
 		return
 	}
 
-	if err := json.Unmarshal(data, &updatedUsers); err != nil || len(updatedUsers) == 0 {
+	if err := json.Unmarshal(data, &updatedUsers); err != nil {
+		fmt.Printf("[UpdateProfile] Unmarshal error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, models.Response{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to parse response: %v", err),
+		})
+		return
+	}
+
+	if len(updatedUsers) == 0 {
+		fmt.Printf("[UpdateProfile] No users returned from update\n")
 		c.JSON(http.StatusNotFound, models.Response{
 			Success: false,
 			Error:   "User not found",

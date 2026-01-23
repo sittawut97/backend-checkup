@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -24,6 +25,7 @@ type Claims struct {
 
 func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		fmt.Printf("[AuthMiddleware] Request: %s %s\n", c.Request.Method, c.Request.URL.Path)
 		authHeader := c.GetHeader("Authorization")
 		tokenString := ""
 		if authHeader != "" {

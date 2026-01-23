@@ -23,7 +23,7 @@ type BookingWithDetails struct {
 }
 
 type CreateBookingRequest struct {
-	CustomerID      string                     `json:"customer_id" binding:"required"`
+	CustomerID      string                     `json:"customer_id"`
 	AppointmentDate string                     `json:"appointment_date" binding:"required"`
 	Status          string                     `json:"status"`
 	Notes           *string                    `json:"notes,omitempty"`
