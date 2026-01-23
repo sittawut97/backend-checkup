@@ -289,15 +289,12 @@ func (h *OTPHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	// Step 10: Set HttpOnly cookie
-	secure := c.Request.Host != "localhost:8080" && c.Request.Host != "127.0.0.1:8080"
-	domain := ""
-	if secure {
-		if c.Request.Host != "localhost:3000" && c.Request.Host != "127.0.0.1:3000" {
-			domain = ".vercel.app"
-		}
+	// Step 10: Set HttpOnly cookie only for local development
+	// For production, frontend uses localStorage which is more reliable
+	isLocalhost := c.Request.Host == "localhost:8080" || c.Request.Host == "127.0.0.1:8080" || c.Request.Host == "localhost:3000" || c.Request.Host == "127.0.0.1:3000"
+	if isLocalhost {
+		c.SetCookie("token", jwtToken, 86400, "/", "", false, true)
 	}
-	c.SetCookie("token", jwtToken, 86400, "/", domain, secure, true)
 
 	// Step 11: Log success
 	h.logAudit(req.Phone, "verify_otp", "success", "login_successful", c.ClientIP())
